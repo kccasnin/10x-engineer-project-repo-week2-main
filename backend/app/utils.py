@@ -5,7 +5,7 @@ from app.models import Prompt
 
 
 def sort_prompts_by_date(prompts: List[Prompt], descending: bool = True) -> List[Prompt]:
-     """Sorts a list of prompts by their creation date.
+    """Sorts a list of prompts by their creation date.
 
     This function sorts the provided list of Prompt objects based on 
     their creation timestamps. The sorting order can be specified to 
@@ -88,19 +88,20 @@ def validate_prompt_content(content: str) -> bool:
 
 
 def extract_variables(content: str) -> List[str]:
-"""Extracts template variables from prompt content.
+    """Extracts template variables from prompt content.
 
-    This function identifies and extracts variables embedded within 
-    the prompt content that follows the template format {{variable_name}}. 
+    This function identifies and extracts variables embedded within
+    the prompt content that follows the template format {{variable_name}}.
     It uses regular expressions to find all occurrences of the variables.
 
     Args:
         content (str): The prompt content containing template variables.
 
     Returns:
-        List[str]: A list of variable names extracted from the content. 
+        List[str]: A list of variable names extracted from the content.
         If no variables are found, an empty list is returned.
     """
     import re
+
     pattern = r'\{\{(\w+)\}\}'
     return re.findall(pattern, content)

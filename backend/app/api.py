@@ -30,6 +30,72 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+from fastapi import FastAPI, HTTPException, Depends
+from app.models import Tag
+from app.storage import storage  # Import the storage for tag manipulation
+from typing import List
+
+
+# ================== Tag Endpoints ==================
+
+@app.post("/tags", response_model=Tag)
+def create_tag(tag: Tag):
+    """Creates a new tag in the system.
+
+    This endpoint allows users to create a tag by providing its name.
+    If a tag with the same name already exists, a 400 error will be 
+    raised indicating that tag names must be unique.
+
+    Args:
+        tag (Tag): The Tag object to be created, which includes a name.
+
+    Returns:
+        Tag: The created Tag object, including its ID and creation timestamp.
+
+    Raises:
+        HTTPException: If a tag with the same name already exists, a 
+        400 Bad Request exception is raised with a detail message.
+    """
+    if any(existing_tag.name == tag.name for existing_tag in storage.get_all_tags()):
+        raise HTTPException(status_code=400, detail="Tag name must be unique.")
+    return storage.create_tag(tag)
+
+
+@app.get("/tags", response_model=List[Tag])
+def retrieve_tags():
+    """Retrieves all tags from the system.
+
+    This endpoint returns a list of all tags currently available in the system.
+
+    Returns:
+        List[Tag]: A list of tag objects, each containing their unique identifier, name, and creation timestamp.
+
+    Raises:
+        None
+    """
+    return storage.get_all_tags()
+
+@app.get("/prompts", response_model=List[Prompt])
+def filter_prompts_by_tags(tags: List[str] = None):
+    """Filters prompts by the specified tag IDs.
+
+    This endpoint allows users to fetch prompts that are associated with 
+    specific tags, enabling easier navigation through categorized prompts.
+
+    Args:
+        tags (List[str], optional): A list of tag IDs to filter prompts by. 
+        If provided, only prompts linked to these tags are returned.
+
+    Returns:
+        List[Prompt]: A list of prompt objects that are associated with the specified tags.
+
+    Raises:
+        HTTPException: If no valid tags are found.
+    """
+    if tags:
+        prompts = storage.get_prompts_by_tags(tags)  # Assuming appropriate method exists
+        return prompts
+    return storage.get_all_prompts()  # Return all if no filters are applied
 
 # ============== Health Check ==============
 
@@ -57,8 +123,7 @@ def list_prompts(
     collection_id: Optional[str] = None,
     search: Optional[str] = None
 ):
-     
-     """Retrieves a list of prompts, optionally filtered by collection or searched by content.
+    """Retrieves a list of prompts, optionally filtered by collection or searched by content.
 
     This endpoint returns all prompts in the storage, allowing optional
     filtering by a specific collection ID and searching for prompts that 
@@ -80,7 +145,6 @@ def list_prompts(
     Raises:
         None
     """
-     
     prompts = storage.get_all_prompts()
     
     # Filter by collection if specified
@@ -101,7 +165,7 @@ def list_prompts(
 @app.get("/prompts/{prompt_id}", response_model=Prompt)
 def get_prompt(prompt_id: str):
 
-"""Retrieves a prompt by its unique identifier.
+    """Retrieves a prompt by its unique identifier.
 
     This endpoint fetches a prompt from storage based on the provided 
     prompt ID. If the prompt does not exist, it raises a 404 HTTP 
@@ -127,7 +191,7 @@ def get_prompt(prompt_id: str):
 
 @app.post("/prompts", response_model=Prompt, status_code=201)
 def create_prompt(prompt_data: PromptCreate):
-     """Creates a new prompt in the system.
+    """Creates a new prompt in the system.
 
     This endpoint allows a user to create a new prompt. It validates 
     that the associated collection exists if a collection ID is provided. 
@@ -159,7 +223,7 @@ def create_prompt(prompt_data: PromptCreate):
 
 @app.put("/prompts/{prompt_id}", response_model=Prompt)
 def update_prompt(prompt_id: str, prompt_data: PromptUpdate):
-     """Updates an existing prompt in the system.
+    """Updates an existing prompt in the system.
 
     This endpoint allows a user to update the details of a prompt identified 
     by its unique ID. It checks if the prompt exists and validates that any 
@@ -185,14 +249,14 @@ def update_prompt(prompt_id: str, prompt_data: PromptUpdate):
             400 HTTPException is raised with the detail message 
             "Collection not found".
     """
-    existing = storage.get_prompt(prompt_id)
+    existing = storage.get_prompt(prompt_id=prompt_id)
     if not existing:
         raise HTTPException(status_code=404, detail="Prompt not found")
 
     # Validate collection if provided
     if prompt_data.collection_id:
         collection = storage.get_collection(prompt_data.collection_id)
-    if not collection:
+        if not collection:
             raise HTTPException(status_code=400, detail="Collection not found")
 
     updated_prompt = Prompt(
@@ -207,13 +271,33 @@ def update_prompt(prompt_id: str, prompt_data: PromptUpdate):
     return storage.update_prompt(prompt_id, updated_prompt)
 
 
-# NOTE: PATCH endpoint is missing! Students need to implement this.
-# It should allow partial updates (only update provided fields)
+@app.patch("/prompts/{prompt_id}", response_model=Prompt)
+def patch_prompt(prompt_id: str, prompt_data: PromptUpdate):
+    """Partially updates an existing prompt."""
+    existing = storage.get_prompt(prompt_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail="Prompt not found")
+
+    updates = prompt_data.model_dump(exclude_unset=True)
+    if "collection_id" in updates and updates["collection_id"]:
+        if not storage.get_collection(updates["collection_id"]):
+            raise HTTPException(status_code=400, detail="Collection not found")
+
+    updated_prompt = Prompt(
+        id=existing.id,
+        title=updates.get("title", existing.title),
+        content=updates.get("content", existing.content),
+        description=updates.get("description", existing.description),
+        collection_id=updates.get("collection_id", existing.collection_id),
+        created_at=existing.created_at,
+        updated_at=get_current_time(),
+    )
+    return storage.update_prompt(prompt_id, updated_prompt)
 
 
 @app.delete("/prompts/{prompt_id}", status_code=204)
 def delete_prompt(prompt_id: str):
-     """Deletes a prompt identified by its unique identifier.
+    """Deletes a prompt identified by its unique identifier.
 
     This endpoint allows a user to delete a prompt from the system. 
     If the prompt with the specified ID does not exist, a 404 HTTP 
@@ -239,7 +323,7 @@ def delete_prompt(prompt_id: str):
 
 @app.get("/collections", response_model=CollectionList)
 def list_collections():
-     """Retrieves a list of all collections in the system.
+    """Retrieves a list of all collections in the system.
 
     This endpoint returns all collections stored in the system, along with 
     the total count of collections.
@@ -281,7 +365,7 @@ def get_collection(collection_id: str):
 
 @app.post("/collections", response_model=Collection, status_code=201)
 def create_collection(collection_data: CollectionCreate):
-     """Creates a new collection in the system.
+    """Creates a new collection in the system.
 
     This endpoint allows a user to create a new collection. The provided 
     collection data is used to instantiate a collection object which is then 

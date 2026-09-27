@@ -55,7 +55,7 @@ class PromptBase(BaseModel):
 
 
 class PromptCreate(PromptBase):
-     """Model for creating a new prompt.
+    """Model for creating a new prompt.
 
     This class inherits from `PromptBase` and is used to validate 
     the data required for creating a new prompt. It does not add any 
@@ -77,7 +77,7 @@ class PromptUpdate(PromptBase):
 
 
 class Prompt(PromptBase):
-     """Model representing a prompt with additional metadata.
+    """Model representing a prompt with additional metadata.
 
     This class extends `PromptBase` to include additional attributes
     that are automatically generated when a prompt is created. It 
@@ -97,7 +97,7 @@ class Prompt(PromptBase):
     updated_at: datetime = Field(default_factory=get_current_time)
 
     class Config:
-         """Pydantic configuration for the Prompt model.
+        """Pydantic configuration for the Prompt model.
 
         This configuration class includes settings that modify the 
         default behavior of the Pydantic model. Specifically, 
@@ -107,7 +107,7 @@ class Prompt(PromptBase):
         from_attributes = True
 
 class PromptPatch(BaseModel):
-"""Model for partial updates to a prompt.
+    """Model for partial updates to a prompt.
 
     This class allows for partial updates where each field is optional. 
     Only the fields provided in the request will be updated, while 
@@ -151,7 +151,7 @@ class CollectionBase(BaseModel):
 
 
 class CollectionCreate(CollectionBase):
-     """Model for creating a new collection.
+    """Model for creating a new collection.
 
     This class inherits from `CollectionBase` and is used to validate 
     the data required for creating a new collection. It does not add 
@@ -188,6 +188,37 @@ class Collection(CollectionBase):
         """
         from_attributes = True
 
+# ============== Tag Model ==============
+
+class Tag(BaseModel):
+    """Model representing a tag for prompts.
+
+    This class defines a tagging system where users can categorize prompts.
+    
+    Attributes:
+        id (str): A unique identifier for the tag, generated using the `generate_id` function.
+        name (str): The name of the tag (e.g., "Review", "Enhancement").
+        created_at (datetime): The timestamp when the tag was created, set to the current time using `get_current_time`.
+    """
+    id: str = Field(default_factory=generate_id)
+    name: str
+    created_at: datetime = Field(default_factory=get_current_time)
+
+# ============== Prompt-Tag Association Model ==============
+
+class PromptTagAssociation(BaseModel):
+    """Model representing the association between prompts and tags.
+
+    This model is used to link prompts to their associated tags, allowing 
+    for a many-to-many relationship.
+
+    Attributes:
+        prompt_id (str): The unique identifier of the associated prompt.
+        tag_id (str): The unique identifier of the associated tag.
+    """
+    prompt_id: str
+    tag_id: str
+
 
 # ============== Response Models ==============
 
@@ -207,7 +238,7 @@ class PromptList(BaseModel):
 
 
 class CollectionList(BaseModel):
-     """Model representing a list of collections.
+    """Model representing a list of collections.
 
     This class holds a list of collection objects and the total count of 
     collections. It is used to structure the response when returning multiple 

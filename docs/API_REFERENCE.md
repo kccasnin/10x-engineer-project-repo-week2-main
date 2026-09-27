@@ -13,7 +13,7 @@ Run
 curl -X GET http://localhost:8000/health
 Sample Response
 
-Apply
+
 {
   "status": "healthy",
   "version": "0.1.0"
@@ -39,7 +39,7 @@ curl -X POST http://localhost:8000/prompts \
 }'
 Sample Response
 
-Apply
+
 {
   "id": "123e4567-e89b-12d3-a456-426614174000",
   "title": "Sample Prompt",
@@ -64,7 +64,7 @@ Run
 curl -X GET http://localhost:8000/prompts
 Sample Response
 
-Apply
+
 {
   "prompts": [
     {
@@ -94,7 +94,7 @@ Run
 curl -X GET http://localhost:8000/prompts/123e4567-e89b-12d3-a456-426614174000
 Sample Response
 
-Apply
+
 {
   "id": "123e4567-e89b-12d3-a456-426614174000",
   "title": "Sample Prompt",
@@ -125,7 +125,7 @@ curl -X PUT http://localhost:8000/prompts/123e4567-e89b-12d3-a456-426614174000 \
 }'
 Sample Response
 
-Apply
+
 {
   "id": "123e4567-e89b-12d3-a456-426614174000",
   "title": "Updated Sample Prompt",
@@ -171,7 +171,7 @@ curl -X POST http://localhost:8000/collections \
 }'
 Sample Response
 
-Apply
+
 {
   "id": "123e4567-e89b-12d3-a456-426614174000",
   "name": "Sample Collection",
@@ -193,7 +193,7 @@ Run
 curl -X GET http://localhost:8000/collections
 Sample Response
 
-Apply
+
 {
   "collections": [
     {
@@ -220,7 +220,7 @@ Run
 curl -X GET http://localhost:8000/collections/123e4567-e89b-12d3-a456-426614174000
 Sample Response
 
-Apply
+
 {
   "id": "123e4567-e89b-12d3-a456-426614174000",
   "name": "Sample Collection",
@@ -247,3 +247,74 @@ Error Codes
 Authentication
 None
 
+### 11. Create Tag
+- **Endpoint**: `POST /tags`
+- **Description**: Create a new tag for categorizing prompts.
+- **Request Example**:
+```bash
+curl -X POST http://localhost:8000/tags \
+-H "Content-Type: application/json" \
+-d '{"name": "Review"}'
+```
+- **Sample Response**:
+```json
+{
+  "id": "tag_id",
+  "name": "Review",
+  "created_at": "2023-10-01T12:00:00Z"
+}
+```
+- **Error Codes**:
+  - **400 Bad Request**: If the tag name already exists.
+- **Authentication**: None
+
+### 12. Retrieve Tags
+- **Endpoint**: `GET /tags`
+- **Description**: Retrieve a list of all tags.
+- **Request Example**:
+```bash
+curl -X GET http://localhost:8000/tags
+```
+- **Sample Response**:
+```json
+[
+  {
+    "id": "tag_id",
+    "name": "Review",
+    "created_at": "2023-10-01T12:00:00Z"
+  },
+  {
+    "id": "tag_id_2",
+    "name": "Enhancement",
+    "created_at": "2023-10-01T12:00:00Z"
+  }
+]
+```
+- **Error Codes**: None
+- **Authentication**: None
+
+### 13. Filter Prompts by Tags
+- **Endpoint**: `GET /prompts`
+- **Description**: Retrieve a list of prompts, optionally filtered by tags.
+- **Query Parameters**: `tags=[tag_id_1,tag_id_2]`
+- **Request Example**:
+```bash
+curl -X GET "http://localhost:8000/prompts?tags=tag_id_1,tag_id_2"
+```
+- **Sample Response**:
+```json
+{
+  "prompts": [
+    {
+      "id": "prompt_id",
+      "title": "Sample Prompt",
+      "content": "Prompt content.",
+      "tags": ["tag_id_1"]
+    }
+  ],
+  "total": 1
+}
+```
+- **Error Codes**:
+  - **404 Not Found**: If any provided tag IDs do not exist.
+- **Authentication**: None

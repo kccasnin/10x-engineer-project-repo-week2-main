@@ -37,7 +37,7 @@ class Storage:
     # ============== Prompt Operations ==============
     
     def create_prompt(self, prompt: Prompt) -> Prompt:
-         """Adds a new prompt to the storage.
+        """Adds a new prompt to the storage.
 
         This method stores a given Prompt object in the in-memory storage 
         using its unique identifier as the key. If a prompt with the same 
@@ -157,7 +157,7 @@ class Storage:
         return self._collections.get(collection_id)
     
     def get_all_collections(self) -> List[Collection]:
-         """Retrieves all collections stored in memory.
+        """Retrieves all collections stored in memory.
 
         This method returns a list of all Collection objects within the 
         in-memory storage.
