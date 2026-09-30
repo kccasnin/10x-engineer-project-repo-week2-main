@@ -1,10 +1,10 @@
 """Utility functions for PromptLab"""
 
-from typing import List
+
 from app.models import Prompt
 
 
-def sort_prompts_by_date(prompts: List[Prompt], descending: bool = True) -> List[Prompt]:
+def sort_prompts_by_date(prompts: list[Prompt], descending: bool = True) -> list[Prompt]:
     """Sorts a list of prompts by their creation date.
 
     This function sorts the provided list of Prompt objects based on 
@@ -24,7 +24,7 @@ def sort_prompts_by_date(prompts: List[Prompt], descending: bool = True) -> List
     return sorted(prompts, key=lambda p: p.created_at, reverse=descending)
 
 
-def filter_prompts_by_collection(prompts: List[Prompt], collection_id: str) -> List[Prompt]:
+def filter_prompts_by_collection(prompts: list[Prompt], collection_id: str) -> list[Prompt]:
     """Filters a list of prompts by their associated collection ID.
 
     This function returns a list of Prompt objects that belong to a 
@@ -43,7 +43,7 @@ def filter_prompts_by_collection(prompts: List[Prompt], collection_id: str) -> L
     return [p for p in prompts if p.collection_id == collection_id]
 
 
-def search_prompts(prompts: List[Prompt], query: str) -> List[Prompt]:
+def search_prompts(prompts: list[Prompt], query: str) -> list[Prompt]:
     """Searches for prompts that match a given query.
 
     This function filters a list of Prompt objects to return only those 
@@ -87,7 +87,7 @@ def validate_prompt_content(content: str) -> bool:
     return len(content.strip()) >= 10
 
 
-def extract_variables(content: str) -> List[str]:
+def extract_variables(content: str) -> list[str]:
     """Extracts template variables from prompt content.
 
     This function identifies and extracts variables embedded within

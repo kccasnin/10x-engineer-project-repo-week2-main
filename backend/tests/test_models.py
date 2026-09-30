@@ -1,8 +1,10 @@
 # backend/tests/test_models.py
 
-import pytest
 from datetime import datetime
-from app.models import Prompt, Collection, PromptCreate, PromptUpdate
+
+import pytest
+
+from app.models import Collection, Prompt
 
 # Test Data
 valid_prompt_data = {

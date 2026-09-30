@@ -1,25 +1,28 @@
 """FastAPI routes for PromptLab"""
+import logging
 
-from fastapi import FastAPI, HTTPException, Depends, Query
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-from typing import Optional, List
+
 from app.models import Tag, TagCreate
 from app.storage import storage  # Import the storage for tag manipulation
-from fastapi.responses import JSONResponse  # Import JSONResponse here
-import logging
+
 logger = logging.getLogger(__name__)
 
 
-from app.models import (
-    Prompt, PromptCreate, PromptUpdate,
-    Collection, CollectionCreate,
-    PromptList, CollectionList, HealthResponse,
-    get_current_time
-)
-from app.storage import storage
-from app.utils import sort_prompts_by_date, filter_prompts_by_collection, search_prompts
 from app import __version__
-
+from app.models import (
+    Collection,
+    CollectionCreate,
+    CollectionList,
+    HealthResponse,
+    Prompt,
+    PromptCreate,
+    PromptList,
+    PromptUpdate,
+    get_current_time,
+)
+from app.utils import filter_prompts_by_collection, search_prompts, sort_prompts_by_date
 
 app = FastAPI(
     title="PromptLab API",
@@ -73,7 +76,7 @@ def create_tag(tag_data: TagCreate):
     return storage.create_tag(tag)  # Ensure the correct response and status code
 
 
-@app.get("/tags", response_model=List[Tag])
+@app.get("/tags", response_model=list[Tag])
 def retrieve_tags():
     """Retrieves all tags from the system.
 
@@ -119,7 +122,6 @@ def delete_tag(tag_id: str):
         raise HTTPException(status_code=409, detail="Cannot delete tag that is in use.")
     
     storage.delete_tag(tag_id)
-    return None
 
 # ============== Health Check ==============
 
@@ -144,9 +146,10 @@ def health_check():
 
 @app.get("/prompts", response_model=PromptList)
 def list_prompts(
-    collection_id: Optional[str] = None,
-    search: Optional[str] = None,
-    tags: Optional[List[str]] = Query(None)
+    collection_id: str | None = None,
+    search: str | None = None,
+    tags: list[str] | None = Query(default=None)  # noqa: B008
+
 ):
     """Retrieves a list of prompts, optionally filtered by collection or searched by content.
 
@@ -170,6 +173,8 @@ def list_prompts(
     Raises:
         None
     """
+    print(f"DEBUG: Received tags -> {tags}")  # Add this line
+
     prompts = storage.get_all_prompts()
     
     # Filter by collection if specified
@@ -183,8 +188,13 @@ def list_prompts(
     # Filter by tags if provided
     if tags:
         # Validate that all provided tag IDs exist
+        print("DEBUG: Entering tags validation block")  # Add this line
+
         for tag_id in tags:
+            print(f"DEBUG: Checking tag_id -> {tag_id}")  # Add this line
+
             if not storage.get_tag(tag_id):
+                print(f"DEBUG: Tag {tag_id} not found! Raising 404")  # Add this line
                 raise HTTPException(status_code=404, detail="Tag not found.")
         # Filter prompts that contain ANY of the specified tags
         prompts = [p for p in prompts if any(tag_id in p.tags for tag_id in tags)]
@@ -254,6 +264,23 @@ def create_prompt(prompt_data: PromptCreate):
     return storage.create_prompt(prompt)
 
 
+def _validate_collection_exists(collection_id: str | None):
+    """Helper to validate that a collection exists if an ID is provided.
+
+    Args:
+        collection_id (Optional[str]): The ID of the collection to validate.
+
+    Raises:
+        HTTPException: If the specified collection ID does not exist, 
+        a 400 HTTPException is raised with the detail message 
+        "Collection not found".
+    """
+    if collection_id:
+        collection = storage.get_collection(collection_id)
+        if not collection:
+            raise HTTPException(status_code=400, detail="Collection not found")
+
+
 @app.put("/prompts/{prompt_id}", response_model=Prompt)
 def update_prompt(prompt_id: str, prompt_data: PromptUpdate):
     """Updates an existing prompt in the system.
@@ -286,11 +313,7 @@ def update_prompt(prompt_id: str, prompt_data: PromptUpdate):
     if not existing:
         raise HTTPException(status_code=404, detail="Prompt not found")
 
-    # Validate collection if provided
-    if prompt_data.collection_id:
-        collection = storage.get_collection(prompt_data.collection_id)
-        if not collection:
-            raise HTTPException(status_code=400, detail="Collection not found")
+    _validate_collection_exists(prompt_data.collection_id)
 
     updated_prompt = Prompt(
         id=existing.id,
@@ -299,33 +322,55 @@ def update_prompt(prompt_id: str, prompt_data: PromptUpdate):
         description=prompt_data.description,
         collection_id=prompt_data.collection_id,
         created_at=existing.created_at,      # preserved — correct
-        updated_at=get_current_time()         # FIXED: fresh timestamp on every update
+        updated_at=get_current_time()        # FIXED: fresh timestamp on every update
     )
     return storage.update_prompt(prompt_id, updated_prompt)
 
 
-@app.patch("/prompts/{prompt_id}", response_model=Prompt)
-def patch_prompt(prompt_id: str, prompt_data: PromptUpdate):
-    """Partially updates an existing prompt."""
-    existing = storage.get_prompt(prompt_id)
-    if not existing:
-        raise HTTPException(status_code=404, detail="Prompt not found")
-
-    updates = prompt_data.model_dump(exclude_unset=True)
-    if "collection_id" in updates and updates["collection_id"]:
-        if not storage.get_collection(updates["collection_id"]):
-            raise HTTPException(status_code=400, detail="Collection not found")
-
-    updated_prompt = Prompt(
-        id=existing.id,
-        title=updates.get("title", existing.title),
-        content=updates.get("content", existing.content),
-        description=updates.get("description", existing.description),
-        collection_id=updates.get("collection_id", existing.collection_id),
-        created_at=existing.created_at,
-        updated_at=get_current_time(),
-    )
-    return storage.update_prompt(prompt_id, updated_prompt)
+#@app.patch("/prompts/{prompt_id}", response_model=Prompt)
+#def patch_prompt(prompt_id: str, prompt_data: PromptPatch):
+#    """Partially updates an existing prompt.
+#
+#    This endpoint allows a user to partially update the details of a prompt 
+#    identified by its unique ID. Only the fields provided in the request body 
+#    will be updated. It checks if the prompt exists and validates that any 
+#    specified collection exists if provided.
+#
+#    Args:
+#        prompt_id (str): The unique identifier of the prompt to update.
+#        prompt_data (PromptPatch): A Pydantic model containing the partially 
+#        updated details of the prompt.
+#
+#    Returns:
+#        Prompt: The updated prompt object, including its existing ID, 
+#        and a new timestamp for updated_at.
+#
+#    Raises:
+#        HTTPException: 
+#            - If the specified prompt ID does not exist, a 404 
+#            HTTPException is raised with the detail message 
+#            "Prompt not found".
+#            - If the specified collection ID does not exist, a 
+#            400 HTTPException is raised with the detail message 
+#            "Collection not found".
+#    """
+#    existing = storage.get_prompt(prompt_id)
+#    if not existing:
+#        raise HTTPException(status_code=404, detail="Prompt not found")
+#
+#    updates = prompt_data.model_dump(exclude_unset=True)
+#    _validate_collection_exists(updates.get("collection_id"))
+#
+#    updated_prompt = Prompt(
+#        id=existing.id,
+#        title=updates.get("title", existing.title),
+#        content=updates.get("content", existing.content),
+#        description=updates.get("description", existing.description),
+#        collection_id=updates.get("collection_id", existing.collection_id),
+#        created_at=existing.created_at,
+#        updated_at=get_current_time(),
+#    )
+#    return storage.update_prompt(prompt_id, updated_prompt)
 
 
 @app.delete("/prompts/{prompt_id}", status_code=204)
@@ -349,7 +394,6 @@ def delete_prompt(prompt_id: str):
     """
     if not storage.delete_prompt(prompt_id):
         raise HTTPException(status_code=404, detail="Prompt not found")
-    return None
 
 
 # ============== Collection Endpoints ==============
@@ -451,4 +495,3 @@ def delete_collection(collection_id: str):
         storage.update_prompt(prompt.id, unfiled)
     
     storage.delete_collection(collection_id)
-    return None

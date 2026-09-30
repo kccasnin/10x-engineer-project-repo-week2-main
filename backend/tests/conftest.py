@@ -1,9 +1,10 @@
 # backend/tests/conftest.py
 import pytest
 from fastapi.testclient import TestClient
+
 from app.api import app
-from app.models import Tag
 from app.storage import storage
+
 
 @pytest.fixture
 def client():

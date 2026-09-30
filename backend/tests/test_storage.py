@@ -1,8 +1,10 @@
 # backend/tests/test_storage.py
 
 import pytest
-from app.models import Prompt, Collection
+
+from app.models import Collection, Prompt
 from app.storage import storage
+
 
 class TestStorage:
     """Tests for the Storage class functionality."""
@@ -93,7 +95,6 @@ class TestStorage:
         """Test tag associations with a prompt during create."""
         # Assuming a tagging system where each prompt can be associated with tags
         # This test needs the tagging model to be implemented, thus an example.
-        pass
 
     # Edge Cases
     def test_create_prompt_with_empty_title(self):

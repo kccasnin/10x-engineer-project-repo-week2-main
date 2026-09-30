@@ -1,8 +1,9 @@
 # backend/tests/test_api.py
 import pytest
 from fastapi.testclient import TestClient
+
 from app.api import app  # Ensure the API is correctly imported
-from app.models import Tag
+
 
 # Create a test client fixture for FastAPI
 @pytest.fixture
@@ -142,90 +143,6 @@ class TestCollections:
         
         assert len(prompts) == 1  # Ensure one prompt exists
         assert prompts[0]["collection_id"] is None  # Check that the collection_id for the prompt is None or empty
-
-
-class TestTags:
-    """Tests for tag endpoints."""
-
-    def test_create_tag(self, client: TestClient):
-        """Test creating a new tag with valid data."""
-
-        # Arrange: Define the request body for creating a new tag.
-        new_tag_data = {"name": "Sample Tag"}
-
-        # Act: Make the POST request to the create_tag endpoint.
-        response = client.post("/tags", json=new_tag_data)
-        # Assert: Check the response status code and body.
-        assert response.status_code == 200  # Expecting a 200 Created response
-        data = response.json()
-        assert data["name"] == "Sample Tag"  # The name should match
-        assert "id" in data  # Ensure that an ID is returned
-        assert "created_at" in data  # Ensure a created_at timestamp is present
-    
-    def test_create_duplicate_tag(self, client: TestClient):
-        """Test creating a tag with a duplicate name."""
-        # First, create the tag
-        
-        new_tag_data = {"name": "Duplicate Tag"}
-        client.post("/tags", json=new_tag_data)
-
-        # Act: Attempt to create the same tag again
-        response = client.post("/tags", json=new_tag_data)
-
-        # Assert: Check for a 400 Bad Request due to duplication
-        assert response.status_code == 400  # Expecting a 400 Bad Request
-        assert response.json() == {"detail": "Tag name must be unique."}  # Error message expected
-
-    def test_create_tag_empty_name(self, client: TestClient):
-        """Test creating a tag with an empty name."""
-        # Act: Attempt to create a tag with an empty name
-        response = client.post("/tags", json={"name": ""})
-
-        # Assert: Expect a 400 Bad Request for empty name
-        assert response.status_code == 400  # Expecting a 400 Bad Request
-        assert response.json() == {"detail": "Tag name must be provided."}  # Expected error message
-    
-    def test_get_tags(self, client: TestClient):
-        """Test retrieving all tags after creation."""
-        # Create a new tag
-        client.post("/tags", json={"name": "Tag 1"})
-        client.post("/tags", json={"name": "Tag 2"})
-
-        # Act: Retrieve all tags
-        response = client.get("/tags")
-
-        # Assert: Check response contains the created tags
-        assert response.status_code == 200  # Expecting a 200 OK response
-        data = response.json()
-        assert len(data) == 2  # Expecting two tags
-        assert any(tag["name"] == "Tag 1" for tag in data)  # Check for Tag 1
-        assert any(tag["name"] == "Tag 2" for tag in data)  # Check for Tag 2
-
-    def test_filter_prompts_by_tags(self, client: TestClient):
-        """Test filtering prompts by tags."""
-        # Create a tag first
-        tag_response = client.post("/tags", json={"name": "Sample Tag"})
-        tag_id = tag_response.json()["id"]
-
-        # Create a prompt associated with the tag
-        prompt_data = {
-           "title": "Prompt with Tag",
-            "content": "This is a prompt associated with the tag.",
-            "description": "Valid description.",
-            "collection_id": None  # Assuming no collection association for this test
-        }
-        client.post("/prompts", json=prompt_data)  # Add prompt
-
-        # Act: Retrieve prompts filtered by the created tag
-        response = client.get(f"/prompts?tags={tag_id}")
-
-        # Assert: Check if the prompt is returned
-        assert response.status_code == 201
-        data = response.json()
-        assert "prompts" in data  # Ensure prompt list is present
-        assert isinstance(data["prompts"], list)  # Check that prompts is a list
-        assert len(data["prompts"]) == 1  # Expect one prompt
-        assert data["prompts"][0]["title"] == "Prompt with Tag"  # Verify correct prompt title
 
 
 class TestTags:

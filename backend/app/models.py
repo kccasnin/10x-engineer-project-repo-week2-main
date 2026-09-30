@@ -1,9 +1,9 @@
 """Pydantic models for PromptLab"""
 
-from datetime import datetime
-from typing import Optional, List
-from pydantic import BaseModel, Field
+from datetime import datetime, timezone
 from uuid import uuid4
+
+from pydantic import BaseModel, Field
 
 
 def generate_id() -> str:
@@ -28,7 +28,7 @@ def get_current_time() -> datetime:
     Returns:
         datetime: The current date and time in UTC.
     """
-    return datetime.utcnow()
+    return datetime.now(timezone.utc)
 
 
 # ============== Prompt Models ==============
@@ -50,9 +50,9 @@ class PromptBase(BaseModel):
     """
     title: str = Field(..., min_length=1, max_length=200)
     content: str = Field(..., min_length=1)
-    description: Optional[str] = Field(None, max_length=500)
-    collection_id: Optional[str] = None
-    tags: List[str] = Field(default_factory=list) 
+    description: str | None = Field(None, max_length=500)
+    collection_id: str | None = None
+    tags: list[str] = Field(default_factory=list) 
 
 
 class PromptCreate(PromptBase):
@@ -63,7 +63,6 @@ class PromptCreate(PromptBase):
     new fields but ensures that the essential attributes defined in 
     `PromptBase` are present and valid during the creation process.
     """
-    pass
 
 
 class PromptUpdate(PromptBase):
@@ -74,7 +73,6 @@ class PromptUpdate(PromptBase):
     introduce any new fields but ensures that the necessary attributes 
     defined in `PromptBase` are valid for the update operation.
     """
-    pass
 
 
 class Prompt(PromptBase):
@@ -96,7 +94,7 @@ class Prompt(PromptBase):
     id: str = Field(default_factory=generate_id)
     created_at: datetime = Field(default_factory=get_current_time)
     updated_at: datetime = Field(default_factory=get_current_time)
-    tags: List[str] = Field(default_factory=list)  # Add this line
+    tags: list[str] = Field(default_factory=list)  # Add this line
 
 
     class Config:
@@ -129,10 +127,10 @@ class PromptPatch(BaseModel):
         collection_id (Optional[str]): An optional identifier for the 
         collection to which this prompt belongs. Default is None.
     """
-    title: Optional[str] = Field(None, min_length=1, max_length=200)
-    content: Optional[str] = Field(None, min_length=1)
-    description: Optional[str] = Field(None, max_length=500)
-    collection_id: Optional[str] = None
+    title: str | None = Field(None, min_length=1, max_length=200)
+    content: str | None = Field(None, min_length=1)
+    description: str | None = Field(None, max_length=500)
+    collection_id: str | None = None
 
 # ============== Collection Models ==============
 
@@ -150,7 +148,7 @@ class CollectionBase(BaseModel):
         which can be up to 500 characters long. Default is None.
     """
     name: str = Field(..., min_length=1, max_length=100)
-    description: Optional[str] = Field(None, max_length=500)
+    description: str | None = Field(None, max_length=500)
 
 
 class CollectionCreate(CollectionBase):
@@ -161,7 +159,6 @@ class CollectionCreate(CollectionBase):
     any new fields but ensures that the essential attributes defined 
     in `CollectionBase` are present and valid during the creation process.
     """
-    pass
 
 
 class Collection(CollectionBase):
@@ -249,7 +246,7 @@ class PromptList(BaseModel):
         prompts (List[Prompt]): A list of prompt objects.
         total (int): The total number of prompts in the list.
     """
-    prompts: List[Prompt]
+    prompts: list[Prompt]
     total: int
 
 
@@ -264,7 +261,7 @@ class CollectionList(BaseModel):
         collections (List[Collection]): A list of collection objects.
         total (int): The total number of collections in the list.
     """
-    collections: List[Collection]
+    collections: list[Collection]
     total: int
 
 

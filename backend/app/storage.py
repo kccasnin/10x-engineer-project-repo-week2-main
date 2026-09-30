@@ -4,8 +4,8 @@ This module provides simple in-memory storage for prompts and collections.
 In a production environment, this would be replaced with a database.
 """
 
-from typing import Dict, List, Optional
-from app.models import Prompt, Collection, Tag  # Ensure Tag is imported
+
+from app.models import Collection, Prompt, Tag  # Ensure Tag is imported
 
 
 class Storage:
@@ -34,9 +34,9 @@ class Storage:
           unique IDs.
         - `_tags`: to store Tag objects mapped by their unique IDs.
         """
-        self._prompts: Dict[str, Prompt] = {}
-        self._collections: Dict[str, Collection] = {}
-        self._tags: Dict[str, Tag] = {}  # Initialize a new dictionary for tags
+        self._prompts: dict[str, Prompt] = {}
+        self._collections: dict[str, Collection] = {}
+        self._tags: dict[str, Tag] = {}  # Initialize a new dictionary for tags
     
     # ============== Prompt Operations ==============
     
@@ -57,7 +57,7 @@ class Storage:
         self._prompts[prompt.id] = prompt
         return prompt
     
-    def get_prompt(self, prompt_id: str) -> Optional[Prompt]:
+    def get_prompt(self, prompt_id: str) -> Prompt | None:
         """Retrieves a prompt by its unique identifier.
 
         This method fetches a Prompt object from the in-memory storage 
@@ -73,7 +73,7 @@ class Storage:
         """
         return self._prompts.get(prompt_id)
     
-    def get_all_prompts(self) -> List[Prompt]:
+    def get_all_prompts(self) -> list[Prompt]:
         """Retrieves all prompts stored in memory.
 
         This method returns a list of all Prompt objects within the 
@@ -85,7 +85,7 @@ class Storage:
         """
         return list(self._prompts.values())
     
-    def update_prompt(self, prompt_id: str, prompt: Prompt) -> Optional[Prompt]:
+    def update_prompt(self, prompt_id: str, prompt: Prompt) -> Prompt | None:
         """Updates an existing prompt in storage.
 
         This method updates the details of an existing Prompt object 
@@ -144,7 +144,7 @@ class Storage:
         self._collections[collection.id] = collection
         return collection
     
-    def get_collection(self, collection_id: str) -> Optional[Collection]:
+    def get_collection(self, collection_id: str) -> Collection | None:
         """Retrieves a collection by its unique identifier.
 
         This method fetches a Collection object from the in-memory storage 
@@ -160,7 +160,7 @@ class Storage:
         """
         return self._collections.get(collection_id)
     
-    def get_all_collections(self) -> List[Collection]:
+    def get_all_collections(self) -> list[Collection]:
         """Retrieves all collections stored in memory.
 
         This method returns a list of all Collection objects within the 
@@ -191,7 +191,7 @@ class Storage:
             return True
         return False
     
-    def get_prompts_by_collection(self, collection_id: str) -> List[Prompt]:
+    def get_prompts_by_collection(self, collection_id: str) -> list[Prompt]:
         """Retrieves all prompts belonging to a specific collection.
 
         This method returns a list of Prompt objects that are associated 
@@ -228,7 +228,7 @@ class Storage:
         self._tags[tag.id] = tag  # Add self._tags to store tags
         return tag
     
-    def get_tag(self, tag_id: str) -> Optional[Tag]:
+    def get_tag(self, tag_id: str) -> Tag | None:
         """Retrieves a tag from the storage by its ID.
 
         This method returns the Tag object associated with the given
@@ -243,7 +243,7 @@ class Storage:
         """
         return self._tags.get(tag_id)
 
-    def get_all_tags(self) -> List[Tag]:
+    def get_all_tags(self) -> list[Tag]:
         """Retrieves all tags stored in memory.
 
         This method returns a list of all Tag objects within the
@@ -273,7 +273,7 @@ class Storage:
             return True
         return False
 
-    def get_prompts_by_tag(self, tag_id: str) -> List[Prompt]:
+    def get_prompts_by_tag(self, tag_id: str) -> list[Prompt]:
         """Retrieves all prompts associated with a specific tag ID.
 
         This method returns a list of Prompt objects that have the given
@@ -287,22 +287,6 @@ class Storage:
         """    
         return [p for p in self._prompts.values() if tag_id in p.tags]
     
-    def clear(self):
-        """Clears all prompts, collections, and tags from storage.
-
-        This method removes all Prompt, Collection, and Tag objects from the
-        in-memory storage, effectively resetting the storage. After
-        invoking this method, all prompts, collections, and tags will be empty.
-
-        Returns:
-            None
-        """
-        self._prompts.clear()
-        self._collections.clear()
-        self._tags.clear()  # Ensure tags are cleared too
-
-
-
     # ============== Utility ==============
 
     def clear(self):
