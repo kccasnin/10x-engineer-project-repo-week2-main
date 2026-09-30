@@ -32,6 +32,11 @@ jobs:
       run: |
         pip install ruff  # Ensure ruff is installed
         ruff check backend/app  # Lint the app directory
+        
+    - name: Run linting (ESLint)
+      run: |
+        npm install
+        npm run lint  # or: npx eslint . --fix   
 
     - name: Enforce coverage threshold
       run: |
