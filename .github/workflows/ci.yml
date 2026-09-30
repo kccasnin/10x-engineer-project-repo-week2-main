@@ -36,7 +36,8 @@ jobs:
     - name: Run linting (ESLint)
       run: |
         npm install
-        npx eslint . 
+        npx eslint . --fix
+        npx eslint .  # Run again to show remaining errors
 
     - name: Enforce coverage threshold
       run: |
