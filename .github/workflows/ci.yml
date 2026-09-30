@@ -31,7 +31,7 @@ jobs:
     - name: Run linting (ruff)
       run: |
         pip install ruff  # Ensure ruff is installed
-        ruff check app  # Lint the app directory
+        ruff check backend/app  # Lint the app directory
 
     - name: Enforce coverage threshold
       run: |
