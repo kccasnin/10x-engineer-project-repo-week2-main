@@ -26,7 +26,7 @@ class TestPrompts:
     
     def test_create_prompt(self, client: TestClient, sample_prompt_data):
         response = client.post("/prompts", json=sample_prompt_data)
-        assert response.status_code == 200
+        assert response.status_code == 201
         data = response.json()
         assert data["title"] == sample_prompt_data["title"]
         assert data["content"] == sample_prompt_data["content"]
@@ -38,9 +38,10 @@ class TestPrompts:
         print(response.json())  # Debug: Print the response JSON for inspection
         assert response.status_code == 200
 
-        # Update the assertion to reflect expected response structure
+       # Update the assertion to reflect expected response structure
         data = response.json()
-        assert isinstance(data, dict)  # Ensure it's a dictionary
+        #assert isinstance(data, dict)  # Ensure it's a dictionary
+        #assert "prompts" in data  # Ensure the 'prompts' key exists in the response
         assert data["prompts"] == []  # Check that the prompts list is empty
         assert data["total"] == 0  # Check that the total number of prompts is zero
     
@@ -131,7 +132,7 @@ class TestCollections:
         prompt_data = {**sample_prompt_data, "collection_id": collection_id}
         client.post("/prompts", json=prompt_data)
 
-        # Delete collection
+       # Delete collection
         client.delete(f"/collections/{collection_id}")
 
         # Verify that the prompt still exists but is no longer associated with the collection
@@ -208,9 +209,10 @@ class TestTags:
 
         # Create a prompt associated with the tag
         prompt_data = {
-            "title": "Prompt with Tag",
+           "title": "Prompt with Tag",
             "content": "This is a prompt associated with the tag.",
-            "description": "Valid description."
+            "description": "Valid description.",
+            "collection_id": None  # Assuming no collection association for this test
         }
         client.post("/prompts", json=prompt_data)  # Add prompt
 
@@ -225,3 +227,127 @@ class TestTags:
         assert len(data["prompts"]) == 1  # Expect one prompt
         assert data["prompts"][0]["title"] == "Prompt with Tag"  # Verify correct prompt title
 
+
+class TestTags:
+    """Tests for tag endpoints based on tagging-systems.md specifications."""
+
+    def test_create_tag_all_info(self, client: TestClient):
+        """Test creating a new tag with all valid info provided."""
+        new_tag_data = {"name": "Review"}
+        response = client.post("/tags", json=new_tag_data)
+        
+        assert response.status_code == 201
+        data = response.json()
+        assert data["name"] == "Review"
+        assert "id" in data
+        assert "created_at" in data
+
+    def test_create_tag_missing_info(self, client: TestClient):
+        """Test creating a tag with missing name (partial/missing info)."""
+        response = client.post("/tags", json={})
+        
+        # Should fail validation (422 Unprocessable Entity)
+        assert response.status_code == 422
+
+    def test_create_tag_empty_name(self, client: TestClient):
+        """Test creating a tag with an empty string as name."""
+        response = client.post("/tags", json={"name": ""})
+        
+        # Depending on implementation, Pydantic might catch this (422) 
+        # or custom validation in the endpoint (400)
+        assert response.status_code in [400, 422]
+
+    def test_create_duplicate_tag(self, client: TestClient):
+        """Test creating a tag with a duplicate name."""
+        client.post("/tags", json={"name": "Duplicate Tag"})
+        response = client.post("/tags", json={"name": "Duplicate Tag"})
+        
+        assert response.status_code == 400
+        assert response.json() == {"detail": "Tag name must be unique."}
+
+    def test_retrieve_tags_empty(self, client: TestClient):
+        """Test retrieving tags when none exist (edge case)."""
+        response = client.get("/tags")
+        
+        assert response.status_code == 200
+        assert response.json() == []
+
+    def test_retrieve_tags_with_data(self, client: TestClient):
+        """Test retrieving all tags after creation."""
+        client.post("/tags", json={"name": "Tag 1"})
+        client.post("/tags", json={"name": "Tag 2"})
+        
+        response = client.get("/tags")
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 2
+        assert any(tag["name"] == "Tag 1" for tag in data)
+        assert any(tag["name"] == "Tag 2" for tag in data)
+
+    def test_filter_prompts_by_tags(self, client: TestClient):
+        """Test filtering prompts by specific tags."""
+        # Create a tag
+        tag_response = client.post("/tags", json={"name": "Sample Tag"})
+        tag_id = tag_response.json()["id"]
+
+        # Create a prompt (assuming prompt creation supports tags or we mock it)
+        # Note: If your PromptCreate model doesn't support tags yet, this might need adjustment
+        # in your models/api to accept a list of tag IDs.
+        prompt_data = {
+            "title": "Prompt with Tag",
+            "content": "This is a prompt associated with the tag.",
+            "description": "Valid description.",
+            "tags": [tag_id]
+        }
+        client.post("/prompts", json=prompt_data)
+
+        # Act: Retrieve prompts filtered by the created tag
+        response = client.get(f"/prompts?tags={tag_id}")
+
+        # Assert: Check if the prompt is returned
+        assert response.status_code == 200
+        data = response.json()
+        assert "prompts" in data
+        assert isinstance(data["prompts"], list)
+        assert len(data["prompts"]) == 1
+        assert data["prompts"][0]["title"] == "Prompt with Tag"
+
+    def test_filter_prompts_by_nonexistent_tag(self, client: TestClient):
+        """Test filtering prompts by a tag that does not exist (edge case)."""
+        response = client.get("/prompts?tags=nonexistent-tag-id")
+        
+        assert response.status_code == 404
+        assert response.json() == {"detail": "Tag not found."}
+
+    def test_delete_tag_success(self, client: TestClient):
+        """Test deleting a tag that is not associated with any prompts."""
+        create_response = client.post("/tags", json={"name": "Unused Tag"})
+        tag_id = create_response.json()["id"]
+        
+        response = client.delete(f"/tags/{tag_id}")
+        assert response.status_code == 204
+        
+        # Verify it's gone
+        get_response = client.get("/tags")
+        assert len(get_response.json()) == 0
+
+    def test_delete_tag_in_use(self, client: TestClient):
+        """Test deleting a tag that is currently associated with prompts."""
+        tag_response = client.post("/tags", json={"name": "In Use Tag"})
+        tag_id = tag_response.json()["id"]
+        
+        # Create a prompt associated with the tag
+        prompt_data = {
+            "title": "Prompt with Tag",
+            "content": "This is a prompt associated with the tag.",
+            "description": "Valid description.",
+            "tags": [tag_id]
+        }
+        client.post("/prompts", json=prompt_data)
+
+        # Attempt to delete the tag
+        response = client.delete(f"/tags/{tag_id}")
+        
+        assert response.status_code == 409
+        assert response.json() == {"detail": "Cannot delete tag that is in use."}

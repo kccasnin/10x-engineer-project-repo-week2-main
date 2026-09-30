@@ -52,6 +52,7 @@ class PromptBase(BaseModel):
     content: str = Field(..., min_length=1)
     description: Optional[str] = Field(None, max_length=500)
     collection_id: Optional[str] = None
+    tags: List[str] = Field(default_factory=list) 
 
 
 class PromptCreate(PromptBase):
@@ -95,6 +96,8 @@ class Prompt(PromptBase):
     id: str = Field(default_factory=generate_id)
     created_at: datetime = Field(default_factory=get_current_time)
     updated_at: datetime = Field(default_factory=get_current_time)
+    tags: List[str] = Field(default_factory=list)  # Add this line
+
 
     class Config:
         """Pydantic configuration for the Prompt model.
@@ -203,6 +206,19 @@ class Tag(BaseModel):
     id: str = Field(default_factory=generate_id)
     name: str
     created_at: datetime = Field(default_factory=get_current_time)
+
+class TagCreate(BaseModel):
+    """Model for creating a new tag.
+
+    This class defines the required data structure for creating a new tag 
+    in the PromptLab application. It validates that the name of the tag 
+    is provided and follows the necessary rules for tag creation.
+
+    Attributes:
+        name (str): The name of the tag, which must be a non-empty string.
+    """
+    name: str
+
 
 # ============== Prompt-Tag Association Model ==============
 

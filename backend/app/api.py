@@ -1,8 +1,14 @@
 """FastAPI routes for PromptLab"""
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends, Query
 from fastapi.middleware.cors import CORSMiddleware
-from typing import Optional
+from typing import Optional, List
+from app.models import Tag, TagCreate
+from app.storage import storage  # Import the storage for tag manipulation
+from fastapi.responses import JSONResponse  # Import JSONResponse here
+import logging
+logger = logging.getLogger(__name__)
+
 
 from app.models import (
     Prompt, PromptCreate, PromptUpdate,
@@ -30,35 +36,41 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-from fastapi import FastAPI, HTTPException, Depends
-from app.models import Tag
-from app.storage import storage  # Import the storage for tag manipulation
-from typing import List
-
 
 # ================== Tag Endpoints ==================
 
-@app.post("/tags", response_model=Tag)
-def create_tag(tag: Tag):
+@app.post("/tags", response_model=Tag, status_code=201)
+def create_tag(tag_data: TagCreate):
     """Creates a new tag in the system.
 
     This endpoint allows users to create a tag by providing its name.
     If a tag with the same name already exists, a 400 error will be 
-    raised indicating that tag names must be unique.
+    raised indicating that tag names must be unique.  If the tag name 
+    is empty, a 400 Bad Request error will be raised.
 
     Args:
-        tag (Tag): The Tag object to be created, which includes a name.
+        tag (TagCreate): The data required to create a new tag, which must 
+        include a name.
 
     Returns:
         Tag: The created Tag object, including its ID and creation timestamp.
 
     Raises:
-        HTTPException: If a tag with the same name already exists, a 
-        400 Bad Request exception is raised with a detail message.
+        HTTPException: 
+        - If a tag with the same name already exists, a 400 Bad Request 
+            exception is raised with a detail message.
+        - If the provided tag name is empty, a 400 Bad Request exception 
+            is raised indicating that the tag name must be provided.
     """
-    if any(existing_tag.name == tag.name for existing_tag in storage.get_all_tags()):
+     # New validation for empty tag name
+    if not tag_data.name or tag_data.name.strip() == "":  # Checking if the tag name is empty or just whitespace
+        raise HTTPException(status_code=400, detail="Tag name must be provided.")
+    
+    if any(existing_tag.name == tag_data.name for existing_tag in storage.get_all_tags()):
         raise HTTPException(status_code=400, detail="Tag name must be unique.")
-    return storage.create_tag(tag)
+    # Create a new Tag instance
+    tag = Tag(name=tag_data.name)
+    return storage.create_tag(tag)  # Ensure the correct response and status code
 
 
 @app.get("/tags", response_model=List[Tag])
@@ -75,27 +87,39 @@ def retrieve_tags():
     """
     return storage.get_all_tags()
 
-@app.get("/prompts", response_model=List[Prompt])
-def filter_prompts_by_tags(tags: List[str] = None):
-    """Filters prompts by the specified tag IDs.
+@app.delete("/tags/{tag_id}", status_code=204)
+def delete_tag(tag_id: str):
+    """Deletes a tag identified by its unique identifier.
 
-    This endpoint allows users to fetch prompts that are associated with 
-    specific tags, enabling easier navigation through categorized prompts.
+    This endpoint allows a user to delete a tag from the system. 
+    If the tag does not exist, a 404 HTTP exception is raised. 
+    Additionally, if the tag is currently associated with any prompts, 
+    a 409 HTTP exception is raised to prevent orphaned associations.
 
     Args:
-        tags (List[str], optional): A list of tag IDs to filter prompts by. 
-        If provided, only prompts linked to these tags are returned.
+        tag_id (str): The unique identifier of the tag to delete.
 
     Returns:
-        List[Prompt]: A list of prompt objects that are associated with the specified tags.
+        None: A successful deletion results in a 204 No Content response.
 
     Raises:
-        HTTPException: If no valid tags are found.
+        HTTPException: If the specified tag ID does not exist, a 
+        404 HTTPException is raised with the detail message 
+        "Tag not found."
+        HTTPException: If the tag is currently associated with prompts, a 
+        409 HTTPException is raised with the detail message 
+        "Cannot delete tag that is in use."
     """
-    if tags:
-        prompts = storage.get_prompts_by_tags(tags)  # Assuming appropriate method exists
-        return prompts
-    return storage.get_all_prompts()  # Return all if no filters are applied
+    tag = storage.get_tag(tag_id)
+    if not tag:
+        raise HTTPException(status_code=404, detail="Tag not found.")
+    
+    # Check if the tag is associated with any prompts
+    if storage.get_prompts_by_tag(tag_id):
+        raise HTTPException(status_code=409, detail="Cannot delete tag that is in use.")
+    
+    storage.delete_tag(tag_id)
+    return None
 
 # ============== Health Check ==============
 
@@ -121,7 +145,8 @@ def health_check():
 @app.get("/prompts", response_model=PromptList)
 def list_prompts(
     collection_id: Optional[str] = None,
-    search: Optional[str] = None
+    search: Optional[str] = None,
+    tags: Optional[List[str]] = Query(None)
 ):
     """Retrieves a list of prompts, optionally filtered by collection or searched by content.
 
@@ -155,8 +180,16 @@ def list_prompts(
     if search:
         prompts = search_prompts(prompts, search)
     
+    # Filter by tags if provided
+    if tags:
+        # Validate that all provided tag IDs exist
+        for tag_id in tags:
+            if not storage.get_tag(tag_id):
+                raise HTTPException(status_code=404, detail="Tag not found.")
+        # Filter prompts that contain ANY of the specified tags
+        prompts = [p for p in prompts if any(tag_id in p.tags for tag_id in tags)]
+    
     # Sort by date (newest first)
-    # Note: There might be an issue with the sorting...
     prompts = sort_prompts_by_date(prompts, descending=True)
     
     return PromptList(prompts=prompts, total=len(prompts))

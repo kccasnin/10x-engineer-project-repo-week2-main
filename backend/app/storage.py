@@ -5,7 +5,7 @@ In a production environment, this would be replaced with a database.
 """
 
 from typing import Dict, List, Optional
-from app.models import Prompt, Collection
+from app.models import Prompt, Collection, Tag  # Ensure Tag is imported
 
 
 class Storage:
@@ -21,18 +21,22 @@ class Storage:
         their corresponding Prompt objects.
         _collections (Dict[str, Collection]): A dictionary mapping collection 
         IDs to their corresponding Collection objects.
+        _tags (Dict[str, Tag]): A dictionary mapping tag IDs to
+        their corresponding Tag objects.
     """
     def __init__(self):
         """Initializes the Storage instance.
 
         This constructor creates an empty in-memory storage for prompts 
-        and collections by initializing two dictionaries:
+        and collections by initializing three dictionaries:
         - `_prompts`: to store Prompt objects mapped by their unique IDs.
         - `_collections`: to store Collection objects mapped by their 
           unique IDs.
+        - `_tags`: to store Tag objects mapped by their unique IDs.
         """
         self._prompts: Dict[str, Prompt] = {}
         self._collections: Dict[str, Collection] = {}
+        self._tags: Dict[str, Tag] = {}  # Initialize a new dictionary for tags
     
     # ============== Prompt Operations ==============
     
@@ -206,13 +210,106 @@ class Storage:
         """
         return [p for p in self._prompts.values() if p.collection_id == collection_id]
     
-    # ============== Utility ==============
+    # ============== Tag Operations ==============
     
+    def create_tag(self, tag: Tag) -> Tag:
+        """Adds a new tag to the storage.
+
+        This method stores a given Tag object in the in-memory storage
+        using its unique identifier as the key. If a tag with the same
+        ID already exists, it will be overwritten.
+
+        Args:
+            tag (Tag): The Tag object to be added to the storage.
+        Returns:
+            Tag: The stored Tag object, which includes its ID
+            and any associated metadata.
+        """
+        self._tags[tag.id] = tag  # Add self._tags to store tags
+        return tag
+    
+    def get_tag(self, tag_id: str) -> Optional[Tag]:
+        """Retrieves a tag from the storage by its ID.
+
+        This method returns the Tag object associated with the given
+        unique identifier, or None if the tag does not exist in the
+        in-memory storage.
+
+        Args:
+            tag_id (str): The unique identifier of the tag to be retrieved.
+
+        Returns:
+            Optional[Tag]: The Tag object if found, otherwise None.
+        """
+        return self._tags.get(tag_id)
+
+    def get_all_tags(self) -> List[Tag]:
+        """Retrieves all tags stored in memory.
+
+        This method returns a list of all Tag objects within the
+        in-memory storage.
+
+        Returns:
+            List[Tag]: A list containing all the Tag objects stored
+            in the storage. This will be empty if no tags have been created.
+        """
+        return list(self._tags.values())  # Ensure this initializes _tags in __init__
+
+    def delete_tag(self, tag_id: str) -> bool:
+        """Deletes a tag from the storage by its ID.
+
+        This method removes a Tag object from the in-memory storage based on its
+        unique identifier. It returns True if the tag was successfully deleted,
+        and False if the tag did not exist in the storage.
+
+        Args:
+            tag_id (str): The unique identifier of the tag to be deleted.
+
+        Returns:
+            bool: True if the tag was deleted, False if it did not exist.
+        """
+        if tag_id in self._tags:
+            del self._tags[tag_id]
+            return True
+        return False
+
+    def get_prompts_by_tag(self, tag_id: str) -> List[Prompt]:
+        """Retrieves all prompts associated with a specific tag ID.
+
+        This method returns a list of Prompt objects that have the given
+        tag ID in their tags attribute.
+
+        Args:
+            tag_id (str): The unique identifier of the tag to filter prompts by.
+
+        Returns:
+            List[Prompt]: A list of Prompt objects associated with the specified tag ID.
+        """    
+        return [p for p in self._prompts.values() if tag_id in p.tags]
+    
+    def clear(self):
+        """Clears all prompts, collections, and tags from storage.
+
+        This method removes all Prompt, Collection, and Tag objects from the
+        in-memory storage, effectively resetting the storage. After
+        invoking this method, all prompts, collections, and tags will be empty.
+
+        Returns:
+            None
+        """
+        self._prompts.clear()
+        self._collections.clear()
+        self._tags.clear()  # Ensure tags are cleared too
+
+
+
+    # ============== Utility ==============
+
     def clear(self):
         """Clears all prompts and collections from storage.
 
-        This method removes all Prompt and Collection objects from the 
-        in-memory storage, effectively resetting the storage. After 
+        This method removes all Prompt and Collection objects from the
+        in-memory storage, effectively resetting the storage. After
         invoking this method, both prompts and collections will be empty.
 
         Returns:
@@ -220,7 +317,9 @@ class Storage:
         """
         self._prompts.clear()
         self._collections.clear()
+        self._tags.clear()  # Clear tags as well
 
 
 # Global storage instance
 storage = Storage()
+
