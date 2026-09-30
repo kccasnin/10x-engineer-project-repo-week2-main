@@ -117,6 +117,68 @@ The server will be running at `http://0.0.0.0:8000`.
    pytest backend/tests
    ```
 
+
+# PromptLab Backend
+
+This directory contains the backend application for PromptLab, built with FastAPI. 
+The application is containerized using Docker and orchestrated with Docker Compose.
+
+## Prerequisites
+
+Ensure you have the following installed on your system:
+- [Docker](https://docs.docker.com/get-docker/)
+- [Docker Compose](https://docs.docker.com/compose/install/) (Included with modern Docker installations)
+
+## Getting Started
+
+To build the Docker image and start the backend container, run the following command from the root directory of your project (where `docker-compose.yml` is located):
+
+```bash
+docker-compose up --build
+```
+
+- The `--build` flag ensures Docker builds the most recent version of your `Dockerfile` before starting the container. If you have already built the image and just want to start it, you can simply run `docker-compose up`.
+
+Once the container is running, the FastAPI application will be available at:
+- **API Base URL:** [http://localhost:8000](http://localhost:8000)
+- **Interactive API Docs (Swagger UI):** [http://localhost:8000/docs](http://localhost:8000/docs)
+
+## Development Workflow
+
+This Docker setup is optimized for local development. 
+
+1. **Live Reloading:** The `docker-compose.yml` is configured to run `uvicorn` with the `--reload` flag. This means the server will automatically restart whenever you make changes to your Python files.
+2. **Volume Mounting:** The local `./backend/app` directory is mounted directly into the container at `/app/app`. Any changes you make to the code on your host machine will be immediately reflected inside the container.
+3. **Unbuffered Output:** The `PYTHONUNBUFFERED=1` environment variable is set to ensure that Python's standard output is flushed directly to the terminal without buffering, allowing you to see real-time logs and `print()` statements from your application.
+
+## Useful Commands
+
+### Run in detached mode
+To run the container in the background (freeing up your terminal), use the `-d` flag:
+```bash
+docker-compose up -d
+```
+
+### View container logs
+If you are running in detached mode, or just want to view the application logs, run:
+```bash
+docker-compose logs -f
+```
+*(The `-f` flag "follows" the logs, streaming them in real-time.)*
+
+### Stop the application
+To gracefully stop and remove the running containers, use:
+```bash
+docker-compose down
+```
+
+### Rebuild the image
+If you add new dependencies to your `requirements.txt` or make changes to your `Dockerfile`, you will need to rebuild the image:
+```bash
+docker-compose up --build -d
+```
+
+
 ## Contributing Guidelines
 We welcome contributions! Please adhere to the following guidelines:
 - Fork the repository and create a new branch for each feature or bugfix.
