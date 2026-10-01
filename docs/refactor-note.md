@@ -16,7 +16,7 @@ The update_prompt() and patch_prompt() functions now use this shared helper inst
 
 ## Before-Refactor Evidence
 
-**Commit:** BEFORE_REFACTOR_COMMIT_HASH
+**Commit:** 2c9e9625f7a95a868fa7c7faf4690350feac2eea
 
 The commit above represents the state of the project before the refactor.
 
@@ -30,7 +30,7 @@ pytest
 
 ## After-Refactor Evidence
 
-**Commit:** `<AFTER_REFACTOR_COMMIT_HASH>`
+**Commit:** f1ddf2bd12ac8aa8de0bafdadbd333bdcbf02a5e
 
 The commit above represents the state of the project after the refactor.
 
