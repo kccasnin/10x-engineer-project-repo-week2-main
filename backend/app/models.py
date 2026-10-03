@@ -90,10 +90,12 @@ class Prompt(PromptBase):
         created, set to the current time using `get_current_time`.
         updated_at (datetime): The timestamp for the last update, 
         also set to the current time using `get_current_time`.
+        version (str): The semantic version of the prompt, defaulting to "1.0.0".
     """
     id: str = Field(default_factory=generate_id)
     created_at: datetime = Field(default_factory=get_current_time)
     updated_at: datetime = Field(default_factory=get_current_time)
+    version: str = Field(default="1.0.0")  # Added for prompt versioning
     tags: list[str] = Field(default_factory=list)  # Add this line
 
 
@@ -279,3 +281,4 @@ class HealthResponse(BaseModel):
     """
     status: str
     version: str
+
