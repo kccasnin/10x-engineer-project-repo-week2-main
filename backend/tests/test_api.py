@@ -268,3 +268,131 @@ class TestTags:
         
         assert response.status_code == 409
         assert response.json() == {"detail": "Cannot delete tag that is in use."}
+
+
+class TestPromptVersions:
+    """Tests for prompt versioning endpoints based on prompt-versions.md."""
+
+    def test_create_prompt_initial_version(self, client: TestClient, sample_prompt_data):
+        """Test creating a new prompt sets version to 1.0.0."""
+        response = client.post("/prompts", json=sample_prompt_data)
+        assert response.status_code == 201
+        data = response.json()
+        assert data["version"] == "1.0.0"
+
+    def test_update_prompt_default_minor_version(self, client: TestClient, sample_prompt_data):
+        """Test updating a prompt defaults to minor version increment."""
+        create_resp = client.post("/prompts", json=sample_prompt_data)
+        prompt_id = create_resp.json()["id"]
+
+        updated_data = {**sample_prompt_data, "title": "Updated Title", "change_type": "minor"}
+        response = client.put(f"/prompts/{prompt_id}", json=updated_data)
+        assert response.status_code == 200
+        assert response.json()["version"] == "1.1.0"
+
+    def test_update_prompt_major_version(self, client: TestClient, sample_prompt_data):
+        """Test updating a prompt with major version increment."""
+        create_resp = client.post("/prompts", json=sample_prompt_data)
+        prompt_id = create_resp.json()["id"]
+
+        updated_data = {**sample_prompt_data, "title": "Updated Title", "change_type": "major"}
+        response = client.put(f"/prompts/{prompt_id}", json=updated_data)
+        assert response.status_code == 200
+        assert response.json()["version"] == "2.0.0"
+
+    def test_update_prompt_patch_version(self, client: TestClient, sample_prompt_data):
+        """Test updating a prompt with patch version increment."""
+        create_resp = client.post("/prompts", json=sample_prompt_data)
+        prompt_id = create_resp.json()["id"]
+
+        updated_data = {**sample_prompt_data, "title": "Updated Title", "change_type": "patch"}
+        response = client.put(f"/prompts/{prompt_id}", json=updated_data)
+        assert response.status_code == 200
+        assert response.json()["version"] == "1.0.1"
+
+    def test_retrieve_prompt_versions(self, client: TestClient, sample_prompt_data):
+        """Test retrieving version history of a prompt."""
+        create_resp = client.post("/prompts", json=sample_prompt_data)
+        prompt_id = create_resp.json()["id"]
+
+        # Update to create a new version
+        updated_data = {**sample_prompt_data, "title": "Updated Title", "change_type": "minor"}
+        client.put(f"/prompts/{prompt_id}", json=updated_data)
+
+        response = client.get(f"/prompts/{prompt_id}/versions")
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 2
+        assert data[0]["version"] == "1.0.0"
+        assert data[1]["version"] == "1.1.0"
+
+    def test_retrieve_versions_nonexistent_prompt(self, client: TestClient):
+        """Test retrieving versions for a nonexistent prompt."""
+        response = client.get("/prompts/nonexistent-id/versions")
+        assert response.status_code == 404
+        assert response.json() == {"detail": "Prompt not found."}
+
+    def test_rollback_to_previous_version(self, client: TestClient, sample_prompt_data):
+        """Test rolling back to a previous version."""
+        create_resp = client.post("/prompts", json=sample_prompt_data)
+        prompt_id = create_resp.json()["id"]
+        original_content = sample_prompt_data["content"]
+
+        # Update to create a new version
+        updated_data = {**sample_prompt_data, "content": "New content", "change_type": "minor"}
+        client.put(f"/prompts/{prompt_id}", json=updated_data)
+
+        # Rollback to 1.0.0
+        rollback_resp = client.post(f"/prompts/{prompt_id}/rollback", json={"version": "1.0.0"})
+        assert rollback_resp.status_code == 200
+        data = rollback_resp.json()
+        assert data["version"] == "1.0.0"
+        assert data["content"] == original_content
+
+    def test_rollback_to_nonexistent_version(self, client: TestClient, sample_prompt_data):
+        """Test rolling back to a version that does not exist."""
+        create_resp = client.post("/prompts", json=sample_prompt_data)
+        prompt_id = create_resp.json()["id"]
+
+        response = client.post(f"/prompts/{prompt_id}/rollback", json={"version": "9.9.9"})
+        assert response.status_code == 404
+        assert response.json() == {"detail": "Prompt version not found."}
+
+    def test_rollback_invalid_version_format(self, client: TestClient, sample_prompt_data):
+        """Test rolling back with an invalid version format."""
+        create_resp = client.post("/prompts", json=sample_prompt_data)
+        prompt_id = create_resp.json()["id"]
+
+        response = client.post(f"/prompts/{prompt_id}/rollback", json={"version": "invalid-version"})
+        assert response.status_code == 400
+        assert response.json() == {"detail": "Invalid version format."}
+
+
+class TestFrontendMissingEndpoints:
+    """Tests for endpoints required by frontend specs that may not exist yet."""
+
+    def test_get_prompts_by_collection_endpoint(self, client: TestClient, sample_collection_data, sample_prompt_data):
+        """Test the /collections/{collection_id}/prompts endpoint."""
+        col_resp = client.post("/collections", json=sample_collection_data)
+        collection_id = col_resp.json()["id"]
+
+        prompt_data = {**sample_prompt_data, "collection_id": collection_id}
+        client.post("/prompts", json=prompt_data)
+
+        response = client.get(f"/collections/{collection_id}/prompts")
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 1
+        assert data[0]["collection_id"] == collection_id
+
+    def test_search_prompts_endpoint(self, client: TestClient, sample_prompt_data):
+        """Test the /prompts/search endpoint."""
+        sample_prompt_data["title"] = "Unique Search Title"
+        client.post("/prompts", json=sample_prompt_data)
+
+        response = client.get("/prompts/search?query=Unique")
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["prompts"]) == 1
+        assert "Unique Search Title" in data["prompts"][0]["title"]
+
