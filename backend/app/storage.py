@@ -5,7 +5,7 @@ In a production environment, this would be replaced with a database.
 """
 
 
-from app.models import Collection, Prompt, Tag  # Ensure Tag is imported
+from app.models import Collection, Prompt, PromptVersionHistory, Tag  # Ensure Tag is imported
 
 
 class Storage:
@@ -23,6 +23,8 @@ class Storage:
         IDs to their corresponding Collection objects.
         _tags (Dict[str, Tag]): A dictionary mapping tag IDs to
         their corresponding Tag objects.
+        _prompt_versions (Dict[str, List[PromptVersionHistory]]): A dictionary
+        mapping prompt IDs to their version history.
     """
     def __init__(self):
         """Initializes the Storage instance.
@@ -33,10 +35,13 @@ class Storage:
         - `_collections`: to store Collection objects mapped by their 
           unique IDs.
         - `_tags`: to store Tag objects mapped by their unique IDs.
+        - `_prompt_versions`: to store version histories for prompts
+          mapped by their unique IDs.
         """
         self._prompts: dict[str, Prompt] = {}
         self._collections: dict[str, Collection] = {}
         self._tags: dict[str, Tag] = {}  # Initialize a new dictionary for tags
+        self._prompt_versions: dict[str, list[PromptVersionHistory]] = {}  # Initialize for version tracking
     
     # ============== Prompt Operations ==============
     
@@ -55,6 +60,7 @@ class Storage:
             and any associated metadata.
         """
         self._prompts[prompt.id] = prompt
+        self._record_version(prompt, "Initial creation.")
         return prompt
     
     def get_prompt(self, prompt_id: str) -> Prompt | None:
@@ -104,6 +110,7 @@ class Storage:
         if prompt_id not in self._prompts:
             return None
         self._prompts[prompt_id] = prompt
+        self._record_version(prompt, "Updated prompt.")
         return prompt
     
     def delete_prompt(self, prompt_id: str) -> bool:
@@ -287,6 +294,38 @@ class Storage:
         """    
         return [p for p in self._prompts.values() if tag_id in p.tags]
     
+    def _record_version(self, prompt: Prompt, updated_data: str) -> None:
+        """Records a snapshot of the prompt's version in its history.
+
+        Args:
+            prompt (Prompt): The prompt being versioned.
+            updated_data (str): A description of the changes made.
+        """
+        if prompt.id not in self._prompt_versions:
+            self._prompt_versions[prompt.id] = []
+
+        version_history = PromptVersionHistory(
+            prompt_id=prompt.id,
+            version=prompt.version,
+            created_at=prompt.updated_at or prompt.created_at,
+            updated_data=updated_data
+        )
+        self._prompt_versions[prompt.id].append(version_history)
+
+    def get_prompt_versions(self, prompt_id: str) -> list[PromptVersionHistory] | None:
+        """Retrieves the version history for a specific prompt.
+
+        Args:
+            prompt_id (str): The unique identifier of the prompt.
+
+        Returns:
+            Optional[List[PromptVersionHistory]]: A list of version history
+            objects if the prompt exists, otherwise None.
+        """
+        if prompt_id not in self._prompts:
+            return None
+        return self._prompt_versions.get(prompt_id, [])
+
     # ============== Utility ==============
 
     def clear(self):
@@ -302,6 +341,7 @@ class Storage:
         self._prompts.clear()
         self._collections.clear()
         self._tags.clear()  # Clear tags as well
+        self._prompt_versions.clear()  # Clear version history as well
 
 
 # Global storage instance

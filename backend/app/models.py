@@ -135,15 +135,30 @@ class PromptPatch(BaseModel):
     description: str | None = Field(None, max_length=500)
     collection_id: str | None = None
 
+# ============== Prompt Version History Model ==============
+
+class PromptVersionHistory(BaseModel):
+    """Model representing the version history of a prompt.
+    Attributes:
+        prompt_id (str): The unique identifier of the prompt.
+        version (str): The version string of the prompt at this point in time.
+        created_at (datetime): The timestamp when this version was recorded.
+        updated_data (str): A description of the changes made.
+    """
+    prompt_id: str
+    version: str
+    created_at: datetime
+    updated_data: str
+
+
 # ============== Collection Models ==============
 
 class CollectionBase(BaseModel):
     """Base model for a collection.
 
-    This class serves as the base Pydantic model defining the essential 
-    attributes of a collection in the system. It includes fields for the 
+    This class serves as the base Pydantic model defining the essential
+    attributes of a collection in the system. It includes fields for the
     collection's name and an optional description.
-
     Attributes:
         name (str): The name of the collection, which must be between 
         1 and 100 characters.
@@ -157,9 +172,9 @@ class CollectionBase(BaseModel):
 class CollectionCreate(CollectionBase):
     """Model for creating a new collection.
 
-    This class inherits from `CollectionBase` and is used to validate 
-    the data required for creating a new collection. It does not add 
-    any new fields but ensures that the essential attributes defined 
+    This class inherits from `CollectionBase` and is used to validate
+    the data required for creating a new collection. It does not add
+    any new fields but ensures that the essential attributes defined
     in `CollectionBase` are present and valid during the creation process.
     """
 
@@ -168,10 +183,9 @@ class Collection(CollectionBase):
     """Model representing a collection with additional metadata.
 
     This class extends `CollectionBase` to include additional attributes
-    that are automatically generated when a collection is created. It 
-    holds the unique identifier of the collection, as well as a timestamp 
+    that are automatically generated when a collection is created. It
+    holds the unique identifier of the collection, as well as a timestamp
     for when it was created.
-
     Attributes:
         id (str): A unique identifier for the collection, generated 
         using the `generate_id` function.
@@ -184,9 +198,9 @@ class Collection(CollectionBase):
     class Config:
         """Pydantic configuration for the Collection model.
 
-        This configuration class modifies the default behavior of the 
-        Pydantic model. It enables the use of attributes directly for 
-        model initialization and validation, facilitating easier 
+        This configuration class modifies the default behavior of the
+        Pydantic model. It enables the use of attributes directly for
+        model initialization and validation, facilitating easier
         interaction with the class's attributes.
         """
         from_attributes = True
@@ -210,8 +224,8 @@ class Tag(BaseModel):
 class TagCreate(BaseModel):
     """Model for creating a new tag.
 
-    This class defines the required data structure for creating a new tag 
-    in the PromptLab application. It validates that the name of the tag 
+    This class defines the required data structure for creating a new tag
+    in the PromptLab application. It validates that the name of the tag
     is provided and follows the necessary rules for tag creation.
 
     Attributes:
@@ -241,8 +255,8 @@ class PromptTagAssociation(BaseModel):
 class PromptList(BaseModel):
     """Model representing a list of prompts.
 
-    This class holds a list of prompt objects and the total count of 
-    prompts. It is used to structure the response when returning multiple 
+    This class holds a list of prompt objects and the total count of
+    prompts. It is used to structure the response when returning multiple
     prompts from the API.
 
     Attributes:
@@ -256,8 +270,8 @@ class PromptList(BaseModel):
 class CollectionList(BaseModel):
     """Model representing a list of collections.
 
-    This class holds a list of collection objects and the total count of 
-    collections. It is used to structure the response when returning multiple 
+    This class holds a list of collection objects and the total count of
+    collections. It is used to structure the response when returning multiple
     collections from the API.
 
     Attributes:
@@ -271,8 +285,8 @@ class CollectionList(BaseModel):
 class HealthResponse(BaseModel):
     """Model representing the health status of the API.
 
-    This class is used to structure the response returned by the API 
-    when checking its health status. It provides information about 
+    This class is used to structure the response returned by the API
+    when checking its health status. It provides information about
     the API's operational state and its version.
 
     Attributes:

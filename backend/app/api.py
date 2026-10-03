@@ -19,6 +19,7 @@ from app.models import (
     PromptCreate,
     PromptList,
     PromptUpdate,
+    PromptVersionHistory,
     get_current_time,
 )
 from app.utils import filter_prompts_by_collection, search_prompts, sort_prompts_by_date
@@ -228,6 +229,28 @@ def get_prompt(prompt_id: str):
     if not prompt:
         raise HTTPException(status_code=404, detail="Prompt not found")
     return prompt
+
+
+@app.get("/prompts/{prompt_id}/versions", response_model=list[PromptVersionHistory])
+def get_prompt_versions(prompt_id: str):
+    """Retrieves the version history for a specific prompt.
+
+    Args:
+        prompt_id (str): The unique identifier of the prompt.
+
+    Returns:
+        List[PromptVersionHistory]: A list of version history objects.
+
+    Raises:
+        HTTPException: If the prompt is not found, raises a 404 error.
+    """
+    prompt = storage.get_prompt(prompt_id)
+    if not prompt:
+        raise HTTPException(status_code=404, detail="Prompt not found.")
+    versions = storage.get_prompt_versions(prompt_id)
+    if versions is None:
+        return []
+    return versions
 
 
 @app.post("/prompts", response_model=Prompt, status_code=201)
