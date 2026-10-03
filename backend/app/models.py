@@ -73,6 +73,7 @@ class PromptUpdate(PromptBase):
     introduce any new fields but ensures that the necessary attributes 
     defined in `PromptBase` are valid for the update operation.
     """
+    change_type: str | None = None
 
 
 class Prompt(PromptBase):

@@ -9,7 +9,6 @@ from app.storage import storage  # Import the storage for tag manipulation
 
 logger = logging.getLogger(__name__)
 
-
 from app import __version__
 from app.models import (
     Collection,
@@ -90,6 +89,7 @@ def retrieve_tags():
     """
     return storage.get_all_tags()
 
+
 @app.delete("/tags/{tag_id}", status_code=204)
 def delete_tag(tag_id: str):
     """Deletes a tag identified by its unique identifier.
@@ -149,7 +149,6 @@ def list_prompts(
     collection_id: str | None = None,
     search: str | None = None,
     tags: list[str] | None = Query(default=None)  # noqa: B008
-
 ):
     """Retrieves a list of prompts, optionally filtered by collection or searched by content.
 
@@ -207,7 +206,6 @@ def list_prompts(
 
 @app.get("/prompts/{prompt_id}", response_model=Prompt)
 def get_prompt(prompt_id: str):
-
     """Retrieves a prompt by its unique identifier.
 
     This endpoint fetches a prompt from storage based on the provided 
@@ -281,39 +279,62 @@ def _validate_collection_exists(collection_id: str | None):
             raise HTTPException(status_code=400, detail="Collection not found")
 
 
+def _increment_version(current_version: str, change_type: str | None) -> str:
+    """Increments the semantic version based on the change type.
+    Args:
+        current_version (str): The current version string (e.g., "1.0.0").
+        change_type (Optional[str]): The type of change ('major', 'minor', 'patch').
+    Returns:
+        str: The new incremented version string.
+    """
+    major, minor, patch = map(int, current_version.split('.'))
+    if change_type == "major":
+        return f"{major + 1}.0.0"
+    elif change_type == "minor":
+        return f"{major}.{minor + 1}.0"
+    elif change_type == "patch":
+        return f"{major}.{minor}.{patch + 1}"
+    else:
+        # Default to minor increment
+        return f"{major}.{minor + 1}.0"
+
+
 @app.put("/prompts/{prompt_id}", response_model=Prompt)
 def update_prompt(prompt_id: str, prompt_data: PromptUpdate):
     """Updates an existing prompt in the system.
 
-    This endpoint allows a user to update the details of a prompt identified 
-    by its unique ID. It checks if the prompt exists and validates that any 
-    specified collection exists if provided. The updated prompt is returned 
+    This endpoint allows a user to update the details of a prompt identified
+    by its unique ID. It checks if the prompt exists and validates that any
+    specified collection exists if provided. The updated prompt is returned
     with a new timestamp.
-
     Args:
         prompt_id (str): The unique identifier of the prompt to update.
-        prompt_data (PromptUpdate): A Pydantic model containing the updated 
-        details of the prompt, including title, content, description, 
+        prompt_data (PromptUpdate): A Pydantic model containing the updated
+        details of the prompt, including title, content, description,
         and an optional collection ID.
 
     Returns:
         Prompt: The updated prompt object, including its existing ID, 
         and a new timestamp for updated_at.
-
     Raises:
-        HTTPException: 
-            - If the specified prompt ID does not exist, a 404 
-            HTTPException is raised with the detail message 
-            "Prompt not found".
-            - If the specified collection ID does not exist, a 
-            400 HTTPException is raised with the detail message 
-            "Collection not found".
+        HTTPException:
+            - If the specified prompt ID does not exist, a 404
+            HTTPException is raised with the detail message
+        "Prompt not found".
+            - If the specified collection ID does not exist, a
+            400 HTTPException is raised with the detail message
+        "Collection not found".
     """
     existing = storage.get_prompt(prompt_id=prompt_id)
     if not existing:
         raise HTTPException(status_code=404, detail="Prompt not found")
 
     _validate_collection_exists(prompt_data.collection_id)
+
+    new_version = _increment_version(existing.version, prompt_data.change_type)
+
+    # Preserve existing tags if not explicitly provided in the update payload
+    tags_to_use = prompt_data.tags if prompt_data.tags else existing.tags
 
     updated_prompt = Prompt(
         id=existing.id,
@@ -322,63 +343,19 @@ def update_prompt(prompt_id: str, prompt_data: PromptUpdate):
         description=prompt_data.description,
         collection_id=prompt_data.collection_id,
         created_at=existing.created_at,      # preserved — correct
-        updated_at=get_current_time()        # FIXED: fresh timestamp on every update
+        updated_at=get_current_time(),        # FIXED: fresh timestamp on every update
+        version=new_version,
+        tags=tags_to_use
     )
     return storage.update_prompt(prompt_id, updated_prompt)
-
-
-#@app.patch("/prompts/{prompt_id}", response_model=Prompt)
-#def patch_prompt(prompt_id: str, prompt_data: PromptPatch):
-#    """Partially updates an existing prompt.
-#
-#    This endpoint allows a user to partially update the details of a prompt 
-#    identified by its unique ID. Only the fields provided in the request body 
-#    will be updated. It checks if the prompt exists and validates that any 
-#    specified collection exists if provided.
-#
-#    Args:
-#        prompt_id (str): The unique identifier of the prompt to update.
-#        prompt_data (PromptPatch): A Pydantic model containing the partially 
-#        updated details of the prompt.
-#
-#    Returns:
-#        Prompt: The updated prompt object, including its existing ID, 
-#        and a new timestamp for updated_at.
-#
-#    Raises:
-#        HTTPException: 
-#            - If the specified prompt ID does not exist, a 404 
-#            HTTPException is raised with the detail message 
-#            "Prompt not found".
-#            - If the specified collection ID does not exist, a 
-#            400 HTTPException is raised with the detail message 
-#            "Collection not found".
-#    """
-#    existing = storage.get_prompt(prompt_id)
-#    if not existing:
-#        raise HTTPException(status_code=404, detail="Prompt not found")
-#
-#    updates = prompt_data.model_dump(exclude_unset=True)
-#    _validate_collection_exists(updates.get("collection_id"))
-#
-#    updated_prompt = Prompt(
-#        id=existing.id,
-#        title=updates.get("title", existing.title),
-#        content=updates.get("content", existing.content),
-#        description=updates.get("description", existing.description),
-#        collection_id=updates.get("collection_id", existing.collection_id),
-#        created_at=existing.created_at,
-#        updated_at=get_current_time(),
-#    )
-#    return storage.update_prompt(prompt_id, updated_prompt)
-
+    
 
 @app.delete("/prompts/{prompt_id}", status_code=204)
 def delete_prompt(prompt_id: str):
     """Deletes a prompt identified by its unique identifier.
 
-    This endpoint allows a user to delete a prompt from the system. 
-    If the prompt with the specified ID does not exist, a 404 HTTP 
+    This endpoint allows a user to delete a prompt from the system.
+    If the prompt with the specified ID does not exist, a 404 HTTP
     exception is raised.
 
     Args:
@@ -388,8 +365,8 @@ def delete_prompt(prompt_id: str):
         None: A successful deletion results in a 204 No Content response.
 
     Raises:
-        HTTPException: If the specified prompt ID does not exist, a 
-        404 HTTPException is raised with the detail message 
+        HTTPException: If the specified prompt ID does not exist, a
+        404 HTTPException is raised with the detail message
         "Prompt not found".
     """
     if not storage.delete_prompt(prompt_id):
@@ -420,8 +397,8 @@ def list_collections():
 def get_collection(collection_id: str):
     """Retrieves a collection by its unique identifier.
 
-    This endpoint fetches a collection from storage based on the provided 
-    collection ID. If the collection does not exist, it raises a 404 HTTP 
+    This endpoint fetches a collection from storage based on the provided
+    collection ID. If the collection does not exist, it raises a 404 HTTP
     exception.
 
     Args:
@@ -444,13 +421,13 @@ def get_collection(collection_id: str):
 def create_collection(collection_data: CollectionCreate):
     """Creates a new collection in the system.
 
-    This endpoint allows a user to create a new collection. The provided 
-    collection data is used to instantiate a collection object which is then 
+    This endpoint allows a user to create a new collection. The provided
+    collection data is used to instantiate a collection object which is then
     stored in the system.
 
     Args:
-        collection_data (CollectionCreate): A Pydantic model containing the 
-        details of the collection to be created, including the name and 
+        collection_data (CollectionCreate): A Pydantic model containing the
+        details of the collection to be created, including the name and
         an optional description.
 
     Returns:
@@ -464,15 +441,14 @@ def create_collection(collection_data: CollectionCreate):
     return storage.create_collection(collection)
 
 
-
 @app.delete("/collections/{collection_id}", status_code=204)
 def delete_collection(collection_id: str):
     """Deletes a collection identified by its unique identifier.
 
-    This endpoint allows a user to delete a collection from the system. 
-    If the specified collection exists, all prompts associated with the 
-    collection will be updated to remove their collection ID before the 
-    collection itself is deleted. If the collection does not exist, a 
+    This endpoint allows a user to delete a collection from the system.
+    If the specified collection exists, all prompts associated with the
+    collection will be updated to remove their collection ID before the
+    collection itself is deleted. If the collection does not exist, a
     404 HTTP exception is raised.
 
     Args:
@@ -482,8 +458,8 @@ def delete_collection(collection_id: str):
         None: A successful deletion results in a 204 No Content response.
 
     Raises:
-        HTTPException: If the specified collection ID does not exist, a 
-        404 HTTPException is raised with the detail message 
+        HTTPException: If the specified collection ID does not exist, a
+        404 HTTPException is raised with the detail message
         "Collection not found".
     """
     collection = storage.get_collection(collection_id)
@@ -493,5 +469,6 @@ def delete_collection(collection_id: str):
     for prompt in storage.get_prompts_by_collection(collection_id):
         unfiled = prompt.model_copy(update={"collection_id": None})
         storage.update_prompt(prompt.id, unfiled)
-    
+
     storage.delete_collection(collection_id)
+
