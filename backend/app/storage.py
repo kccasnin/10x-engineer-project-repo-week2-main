@@ -4,8 +4,7 @@ This module provides simple in-memory storage for prompts and collections.
 In a production environment, this would be replaced with a database.
 """
 
-
-from app.models import Collection, Prompt, PromptVersionHistory, Tag  # Ensure Tag is imported
+from app.models import Collection, Prompt, PromptVersionHistory, Tag, get_current_time  # Ensure Tag is imported
 
 
 class Storage:
@@ -308,7 +307,8 @@ class Storage:
             prompt_id=prompt.id,
             version=prompt.version,
             created_at=prompt.updated_at or prompt.created_at,
-            updated_data=updated_data
+            updated_data=updated_data,
+            prompt_snapshot=prompt
         )
         self._prompt_versions[prompt.id].append(version_history)
 
@@ -325,6 +325,28 @@ class Storage:
         if prompt_id not in self._prompts:
             return None
         return self._prompt_versions.get(prompt_id, [])
+
+    def rollback_prompt(self, prompt_id: str, target_version: str) -> Prompt | None:
+        """Rolls back a prompt to a specific version.
+
+        Args:
+            prompt_id (str): The unique identifier of the prompt.
+            target_version (str): The version to roll back to.
+        Returns:
+            Optional[Prompt]: The restored Prompt object if successful, otherwise None.
+        """
+        if prompt_id not in self._prompt_versions:
+            return None
+
+        for history in self._prompt_versions[prompt_id]:
+            if history.version == target_version:
+                restored_prompt = history.prompt_snapshot
+                # Update the timestamp to reflect the rollback action
+                restored_prompt = restored_prompt.model_copy(update={"updated_at": get_current_time()})
+                self._prompts[prompt_id] = restored_prompt
+                self._record_version(restored_prompt, f"Rolled back to version {target_version}.")
+                return restored_prompt
+        return None
 
     # ============== Utility ==============
 

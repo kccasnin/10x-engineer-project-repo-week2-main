@@ -20,6 +20,7 @@ from app.models import (
     PromptList,
     PromptUpdate,
     PromptVersionHistory,
+    RollbackRequest,
     get_current_time,
 )
 from app.utils import filter_prompts_by_collection, search_prompts, sort_prompts_by_date
@@ -330,6 +331,7 @@ def update_prompt(prompt_id: str, prompt_data: PromptUpdate):
     by its unique ID. It checks if the prompt exists and validates that any
     specified collection exists if provided. The updated prompt is returned
     with a new timestamp.
+
     Args:
         prompt_id (str): The unique identifier of the prompt to update.
         prompt_data (PromptUpdate): A Pydantic model containing the updated
@@ -339,6 +341,7 @@ def update_prompt(prompt_id: str, prompt_data: PromptUpdate):
     Returns:
         Prompt: The updated prompt object, including its existing ID, 
         and a new timestamp for updated_at.
+
     Raises:
         HTTPException:
             - If the specified prompt ID does not exist, a 404
@@ -372,6 +375,35 @@ def update_prompt(prompt_id: str, prompt_data: PromptUpdate):
     )
     return storage.update_prompt(prompt_id, updated_prompt)
     
+
+@app.post("/prompts/{prompt_id}/rollback", response_model=Prompt)
+def rollback_prompt(prompt_id: str, rollback_data: RollbackRequest):
+    """Rolls back a prompt to a previous version.
+
+    Args:
+        prompt_id (str): The unique identifier of the prompt.
+        rollback_data (RollbackRequest): The version to roll back to.
+
+    Returns:
+        Prompt: The restored prompt object.
+
+    Raises:
+        HTTPException: If the version format is invalid (400), the prompt is
+        not found (404), or the version is not found (404).
+    """
+    import re
+    if not re.match(r'^\d+\.\d+\.\d+$', rollback_data.version):
+        raise HTTPException(status_code=400, detail="Invalid version format.")
+
+    prompt = storage.get_prompt(prompt_id)
+    if not prompt:
+        raise HTTPException(status_code=404, detail="Prompt not found.")
+
+    restored = storage.rollback_prompt(prompt_id, rollback_data.version)
+    if not restored:
+        raise HTTPException(status_code=404, detail="Prompt version not found.")
+    return restored
+
 
 @app.delete("/prompts/{prompt_id}", status_code=204)
 def delete_prompt(prompt_id: str):

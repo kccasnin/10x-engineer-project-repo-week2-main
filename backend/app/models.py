@@ -144,12 +144,17 @@ class PromptVersionHistory(BaseModel):
         version (str): The version string of the prompt at this point in time.
         created_at (datetime): The timestamp when this version was recorded.
         updated_data (str): A description of the changes made.
+        prompt_snapshot (Prompt): The full prompt object at this version.
     """
     prompt_id: str
     version: str
     created_at: datetime
     updated_data: str
+    prompt_snapshot: Prompt
 
+class RollbackRequest(BaseModel):
+    """Model for requesting a rollback to a specific version."""
+    version: str
 
 # ============== Collection Models ==============
 
