@@ -206,12 +206,32 @@ def list_prompts(
     return PromptList(prompts=prompts, total=len(prompts))
 
 
+@app.get("/prompts/search", response_model=PromptList)
+def search_prompts_endpoint(query: str):
+    """Searches prompts by title or description.
+
+    This endpoint returns all prompts that match the provided search query
+    in their title or description. The search is case-insensitive.
+    Args:
+        query (str): The search query to filter prompts by.
+    Returns:
+        PromptList: An object containing a list of matching prompts and the
+        total number of matches.
+    Raises:
+        None
+    """
+    prompts = storage.get_all_prompts()
+    prompts = search_prompts(prompts, query)
+    prompts = sort_prompts_by_date(prompts, descending=True)
+    return PromptList(prompts=prompts, total=len(prompts))
+
+
 @app.get("/prompts/{prompt_id}", response_model=Prompt)
 def get_prompt(prompt_id: str):
     """Retrieves a prompt by its unique identifier.
 
-    This endpoint fetches a prompt from storage based on the provided 
-    prompt ID. If the prompt does not exist, it raises a 404 HTTP 
+    This endpoint fetches a prompt from storage based on the provided
+    prompt ID. If the prompt does not exist, it raises a 404 HTTP
     exception.
 
     Args:
@@ -226,7 +246,6 @@ def get_prompt(prompt_id: str):
     """
 
     prompt = storage.get_prompt(prompt_id)
-
     if not prompt:
         raise HTTPException(status_code=404, detail="Prompt not found")
     return prompt
@@ -235,13 +254,10 @@ def get_prompt(prompt_id: str):
 @app.get("/prompts/{prompt_id}/versions", response_model=list[PromptVersionHistory])
 def get_prompt_versions(prompt_id: str):
     """Retrieves the version history for a specific prompt.
-
     Args:
         prompt_id (str): The unique identifier of the prompt.
-
     Returns:
         List[PromptVersionHistory]: A list of version history objects.
-
     Raises:
         HTTPException: If the prompt is not found, raises a 404 error.
     """
@@ -258,22 +274,19 @@ def get_prompt_versions(prompt_id: str):
 def create_prompt(prompt_data: PromptCreate):
     """Creates a new prompt in the system.
 
-    This endpoint allows a user to create a new prompt. It validates 
-    that the associated collection exists if a collection ID is provided. 
+    This endpoint allows a user to create a new prompt. It validates
+    that the associated collection exists if a collection ID is provided.
     If the collection exists, the new prompt is created and stored.
-
     Args:
-        prompt_data (PromptCreate): A Pydantic model containing the details 
-        of the prompt to be created, including title, content, 
+        prompt_data (PromptCreate): A Pydantic model containing the details
+        of the prompt to be created, including title, content,
         description, and an optional collection ID.
-
     Returns:
         Prompt: The created prompt object, including its generated ID 
         and timestamps.
-
     Raises:
-        HTTPException: If the specified collection ID does not exist, 
-        a 400 HTTPException is raised with the detail message 
+        HTTPException: If the specified collection ID does not exist,
+        a 400 HTTPException is raised with the detail message
         "Collection not found".
     """
     # Validate collection exists if provided
@@ -293,8 +306,8 @@ def _validate_collection_exists(collection_id: str | None):
         collection_id (Optional[str]): The ID of the collection to validate.
 
     Raises:
-        HTTPException: If the specified collection ID does not exist, 
-        a 400 HTTPException is raised with the detail message 
+        HTTPException: If the specified collection ID does not exist,
+        a 400 HTTPException is raised with the detail message
         "Collection not found".
     """
     if collection_id:
@@ -374,7 +387,7 @@ def update_prompt(prompt_id: str, prompt_data: PromptUpdate):
         tags=tags_to_use
     )
     return storage.update_prompt(prompt_id, updated_prompt)
-    
+
 
 @app.post("/prompts/{prompt_id}/rollback", response_model=Prompt)
 def rollback_prompt(prompt_id: str, rollback_data: RollbackRequest):
