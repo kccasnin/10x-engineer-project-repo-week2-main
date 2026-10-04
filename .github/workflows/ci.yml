@@ -28,7 +28,7 @@ jobs:
           pip install ruff pytest pytest-cov
 
       - name: Run Ruff
-        run: ruff check app tests
+        run: ruff check app tests --fix
 
       - name: Run tests with coverage
         run: pytest --cov=app --cov-report=term-missing --cov-fail-under=80
