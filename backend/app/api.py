@@ -527,3 +527,27 @@ def delete_collection(collection_id: str):
 
     storage.delete_collection(collection_id)
 
+
+@app.get("/collections/{collection_id}/prompts", response_model=list[Prompt])
+def get_prompts_by_collection(collection_id: str):
+    """Retrieves all prompts belonging to a specific collection.
+
+    This endpoint fetches a collection from storage and returns all prompts
+    associated with the provided collection ID. If the collection does not
+    exist, it raises a 404 HTTP exception.
+
+    Args:
+        collection_id (str): The unique identifier of the collection.
+
+    Returns:
+        List[Prompt]: A list of prompt objects belonging to the collection.
+
+    Raises:
+        HTTPException: If the collection with the specified ID does not exist,
+        a 404 HTTPException is raised with the detail message "Collection not found".
+    """
+    collection = storage.get_collection(collection_id)
+    if not collection:
+        raise HTTPException(status_code=404, detail="Collection not found")
+    return storage.get_prompts_by_collection(collection_id)
+
